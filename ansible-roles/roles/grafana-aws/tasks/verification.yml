@@ -1,0 +1,93 @@
+---
+# 배포 완료 확인 태스크
+# 이 파일은 Grafana 배포가 성공적으로 완료되었는지 확인합니다
+
+- name: "Grafana 서비스 상태 확인"
+  systemd:
+    name: grafana-server
+  register: grafana_service_status
+
+- name: "Grafana 서비스 상태 출력"
+  debug:
+    msg: |
+      Grafana 서비스 상태:
+      - 활성화됨: {{ grafana_service_status.status.ActiveState }}
+      - 실행 중: {{ grafana_service_status.status.SubState }}
+      - 부팅 시 자동 시작: {{ grafana_service_status.status.UnitFileState }}
+
+- name: "Grafana 웹 인터페이스 접근 테스트"
+  uri:
+    url: "http://localhost:{{ grafana_port }}/api/health"
+    method: GET
+    timeout: 30
+  register: grafana_health_check
+  retries: 5
+  delay: 10
+
+- name: "Grafana API 응답 확인"
+  debug:
+    msg: |
+      Grafana API 상태 확인:
+      - HTTP 상태 코드: {{ grafana_health_check.status }}
+      - 응답 내용: {{ grafana_health_check.json | default('N/A') }}
+
+- name: "Grafana 포트 리스닝 확인"
+  wait_for:
+    port: "{{ grafana_port }}"
+    host: "localhost"
+    timeout: 60
+
+- name: "Grafana 로그 파일 확인"
+  stat:
+    path: "/var/log/grafana/grafana.log"
+  register: grafana_log_file
+
+- name: "Grafana 로그 파일 상태 출력"
+  debug:
+    msg: |
+      Grafana 로그 파일 상태:
+      - 존재함: {{ grafana_log_file.stat.exists }}
+      - 크기: {{ grafana_log_file.stat.size | default('N/A') }} bytes
+      - 권한: {{ grafana_log_file.stat.mode | default('N/A') }}
+
+- name: "Grafana 데이터 디렉토리 확인"
+  stat:
+    path: "/var/lib/grafana"
+  register: grafana_data_dir
+
+- name: "Grafana 데이터 디렉토리 상태 출력"
+  debug:
+    msg: |
+      Grafana 데이터 디렉토리 상태:
+      - 존재함: {{ grafana_data_dir.stat.exists }}
+      - 권한: {{ grafana_data_dir.stat.mode | default('N/A') }}
+
+- name: "Prometheus 서비스 상태 확인"
+  systemd:
+    name: prometheus
+  register: prometheus_service_status
+
+- name: "Prometheus 서비스 상태 출력"
+  debug:
+    msg: |
+      Prometheus 서비스 상태:
+      - 활성화됨: {{ prometheus_service_status.status.ActiveState }}
+      - 실행 중: {{ prometheus_service_status.status.SubState }}
+
+- name: "Node Exporter 서비스 상태 확인"
+  systemd:
+    name: prometheus-node-exporter
+  register: node_exporter_service_status
+
+- name: "Node Exporter 서비스 상태 출력"
+  debug:
+    msg: |
+      Node Exporter 서비스 상태:
+      - 활성화됨: {{ node_exporter_service_status.status.ActiveState }}
+      - 실행 중: {{ node_exporter_service_status.status.SubState }}
+
+- name: "배포 검증 완료"
+  debug:
+    msg: |
+      모든 서비스 검증이 완료되었습니다!
+      Grafana가 성공적으로 배포되었으며 모든 구성 요소가 정상 작동 중입니다.

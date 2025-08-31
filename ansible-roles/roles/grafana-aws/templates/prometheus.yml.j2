@@ -1,0 +1,45 @@
+# Prometheus 설정 파일
+# 이 파일은 Prometheus 메트릭 수집 서버의 구성을 포함합니다
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Grafana 모니터링
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/metrics'
+
+  # Node Exporter (시스템 메트릭)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # Grafana 서버 메트릭
+  - job_name: 'grafana-server'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # AWS CloudWatch 메트릭 (선택사항)
+  - job_name: 'aws-cloudwatch'
+    static_configs:
+      - targets: ['localhost:9106']
+    when: enable_cloudwatch | default(false)
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093

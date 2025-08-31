@@ -1,0 +1,94 @@
+---
+# 모니터링 및 로깅 설정 태스크
+# 이 파일은 Grafana 서버의 모니터링과 로깅을 구성합니다
+
+- name: "Prometheus 설치"
+  apt:
+    name: prometheus
+    state: present
+  become: true
+
+- name: "Prometheus 설정 디렉토리 생성"
+  file:
+    path: "/etc/prometheus"
+    state: directory
+    mode: "0755"
+    owner: "prometheus"
+    group: "prometheus"
+  become: true
+
+- name: "Prometheus 설정 파일 생성"
+  template:
+    src: "prometheus.yml.j2"
+    dest: "/etc/prometheus/prometheus.yml"
+    owner: "prometheus"
+    group: "prometheus"
+    mode: "0644"
+  become: true
+  notify: "Prometheus 재시작"
+
+- name: "Prometheus 서비스 활성화 및 시작"
+  systemd:
+    name: prometheus
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: true
+
+- name: "Node Exporter 설치"
+  apt:
+    name: prometheus-node-exporter
+    state: present
+  become: true
+
+- name: "Node Exporter 서비스 활성화 및 시작"
+  systemd:
+    name: prometheus-node-exporter
+    enabled: yes
+    state: started
+  become: true
+
+- name: "CloudWatch Agent 설치"
+  shell: |
+    wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+    dpkg -i amazon-cloudwatch-agent.deb
+  become: true
+  when: enable_cloudwatch
+
+- name: "CloudWatch Agent 설정 파일 생성"
+  template:
+    src: "cloudwatch-config.json.j2"
+    dest: "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  become: true
+  when: enable_cloudwatch
+  notify: "CloudWatch Agent 재시작"
+
+- name: "CloudWatch Agent 서비스 활성화 및 시작"
+  systemd:
+    name: amazon-cloudwatch-agent
+    enabled: yes
+    state: started
+  become: true
+  when: enable_cloudwatch
+
+- name: "로그 로테이션 설정"
+  template:
+    src: "logrotate-grafana.j2"
+    dest: "/etc/logrotate.d/grafana"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  become: true
+  when: enable_logging
+
+- name: "모니터링 설정 완료"
+  debug:
+    msg: |
+      모니터링 및 로깅 설정이 완료되었습니다:
+      - Prometheus: 활성화됨
+      - Node Exporter: 활성화됨
+      - CloudWatch Agent: {{ '활성화됨' if enable_cloudwatch else '비활성화됨' }}
+      - 로그 로테이션: {{ '활성화됨' if enable_logging else '비활성화됨' }}

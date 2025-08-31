@@ -1,0 +1,62 @@
+---
+# EC2 인스턴스 생성 태스크
+# 이 파일은 AWS EC2 인스턴스의 생성과 구성을 담당합니다
+
+- name: "EC2 인스턴스 정보 수집"
+  ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "{{ instance_name }}"
+  register: existing_instance
+
+- name: "EC2 인스턴스 생성"
+  ec2_instance:
+    region: "{{ aws_region }}"
+    name: "{{ instance_name }}"
+    instance_type: "{{ instance_type }}"
+    image_id: "ami-0c02fb55956c7d316"  # Ubuntu 20.04 LTS
+    key_name: "{{ key_name }}"
+    vpc_subnet_id: "{{ subnet_id }}"
+    security_group: "{{ security_group_name }}"
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: "{{ volume_size }}"
+          volume_type: "{{ volume_type }}"
+          delete_on_termination: "{{ delete_on_termination }}"
+    tags:
+      Name: "{{ instance_name }}"
+      Environment: "production"
+      Project: "monitoring"
+      Owner: "devops-team"
+      CostCenter: "IT-001"
+    wait: yes
+    wait_timeout: 600
+  register: ec2_instance
+  when: existing_instance.instances | length == 0
+
+- name: "EC2 인스턴스 정보 저장"
+  set_fact:
+    instance_id: "{{ ec2_instance.instance.id | default(existing_instance.instances[0].instance_id) }}"
+    instance_public_ip: "{{ ec2_instance.instance.public_ip_address | default(existing_instance.instances[0].public_ip_address) }}"
+    instance_private_ip: "{{ ec2_instance.instance.private_ip_address | default(existing_instance.instances[0].private_ip_address) }}"
+
+- name: "EC2 인스턴스 상태 확인"
+  ec2_instance_info:
+    region: "{{ aws_region }}"
+    instance_ids:
+      - "{{ instance_id }}"
+  register: instance_status
+  until: instance_status.instances[0].state.name == "running"
+  retries: 30
+  delay: 10
+
+- name: "EC2 인스턴스 연결 정보 출력"
+  debug:
+    msg: |
+      EC2 인스턴스가 성공적으로 생성되었습니다:
+      인스턴스 ID: {{ instance_id }}
+      공용 IP: {{ instance_public_ip }}
+      사설 IP: {{ instance_private_ip }}
+      인스턴스 타입: {{ instance_type }}
+      보안 그룹: {{ security_group_name }}

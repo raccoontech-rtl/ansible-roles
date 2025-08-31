@@ -1,0 +1,88 @@
+#!/bin/bash
+# Grafana 백업 스크립트
+# 이 스크립트는 Grafana 데이터와 설정을 백업합니다
+
+# 설정 변수
+BACKUP_DIR="/opt/grafana-backups"
+GRAFANA_DATA_DIR="/var/lib/grafana"
+GRAFANA_CONFIG_DIR="/etc/grafana"
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_NAME="grafana_backup_${BACKUP_DATE}.tar.gz"
+RETENTION_DAYS={{ backup_retention }}
+
+# 데이터베이스 백업 (PostgreSQL)
+DB_HOST="{{ database_host }}"
+DB_NAME="{{ database_name }}"
+DB_USER="{{ database_user }}"
+DB_PASSWORD="{{ database_password }}"  # 하드코딩된 데이터베이스 비밀번호
+DB_BACKUP_NAME="grafana_db_backup_${BACKUP_DATE}.sql"
+
+# 로그 파일
+LOG_FILE="/var/log/grafana-backup.log"
+
+# 로그 함수
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# 백업 디렉토리 확인
+if [ ! -d "$BACKUP_DIR" ]; then
+    mkdir -p "$BACKUP_DIR"
+fi
+
+log_message "Grafana 백업을 시작합니다..."
+
+# 데이터베이스 백업
+if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
+    log_message "PostgreSQL 데이터베이스 백업을 시작합니다..."
+    PGPASSWORD="$DB_PASSWORD" pg_dump -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" > "$BACKUP_DIR/$DB_BACKUP_NAME"
+    
+    if [ $? -eq 0 ]; then
+        log_message "데이터베이스 백업이 완료되었습니다: $DB_BACKUP_NAME"
+        gzip "$BACKUP_DIR/$DB_BACKUP_NAME"
+    else
+        log_message "데이터베이스 백업에 실패했습니다."
+    fi
+fi
+
+# Grafana 데이터 및 설정 백업
+log_message "Grafana 파일 백업을 시작합니다..."
+
+tar -czf "$BACKUP_DIR/$BACKUP_NAME" \
+    --exclude="$GRAFANA_DATA_DIR/grafana.db" \
+    --exclude="$GRAFANA_DATA_DIR/grafana.db-shm" \
+    --exclude="$GRAFANA_DATA_DIR/grafana.db-wal" \
+    "$GRAFANA_DATA_DIR" \
+    "$GRAFANA_CONFIG_DIR"
+
+if [ $? -eq 0 ]; then
+    log_message "Grafana 파일 백업이 완료되었습니다: $BACKUP_NAME"
+    
+    # 백업 파일 크기 확인
+    BACKUP_SIZE=$(du -h "$BACKUP_DIR/$BACKUP_NAME" | cut -f1)
+    log_message "백업 파일 크기: $BACKUP_SIZE"
+    
+    # S3에 업로드 (선택사항)
+    if [ -n "{{ backup_s3_bucket }}" ]; then
+        log_message "S3에 백업을 업로드합니다..."
+        aws s3 cp "$BACKUP_DIR/$BACKUP_NAME" "s3://{{ backup_s3_bucket }}/{{ backup_s3_prefix }}/"
+        
+        if [ $? -eq 0 ]; then
+            log_message "S3 업로드가 완료되었습니다."
+        else
+            log_message "S3 업로드에 실패했습니다."
+        fi
+    fi
+else
+    log_message "Grafana 파일 백업에 실패했습니다."
+    exit 1
+fi
+
+# 오래된 백업 파일 정리
+log_message "오래된 백업 파일을 정리합니다..."
+find "$BACKUP_DIR" -name "grafana_backup_*.tar.gz" -mtime +$RETENTION_DAYS -delete
+find "$BACKUP_DIR" -name "grafana_db_backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
+
+log_message "Grafana 백업이 완료되었습니다."
+log_message "백업 디렉토리: $BACKUP_DIR"
+log_message "백업 보관 기간: $RETENTION_DAYS일"

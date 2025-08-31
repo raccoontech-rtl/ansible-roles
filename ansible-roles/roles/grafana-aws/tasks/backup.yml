@@ -1,0 +1,79 @@
+---
+# 백업 및 유지보수 설정 태스크
+# 이 파일은 Grafana 데이터의 백업과 정기적인 유지보수를 구성합니다
+
+- name: "백업 디렉토리 생성"
+  file:
+    path: "/opt/grafana-backups"
+    state: directory
+    mode: "0755"
+    owner: "grafana"
+    group: "grafana"
+  become: true
+  when: backup_enabled
+
+- name: "백업 스크립트 생성"
+  template:
+    src: "backup-grafana.sh.j2"
+    dest: "/opt/grafana-backups/backup-grafana.sh"
+    owner: "grafana"
+    group: "grafana"
+    mode: "0755"
+  become: true
+  when: backup_enabled
+
+- name: "백업 스크립트 실행 권한 부여"
+  file:
+    path: "/opt/grafana-backups/backup-grafana.sh"
+    mode: "0755"
+  become: true
+  when: backup_enabled
+
+- name: "Cron 작업 추가 (백업)"
+  cron:
+    name: "Grafana 백업"
+    minute: "0"
+    hour: "2"
+    job: "/opt/grafana-backups/backup-grafana.sh >> /var/log/grafana-backup.log 2>&1"
+    user: "grafana"
+  become: true
+  when: backup_enabled
+
+- name: "백업 정리 스크립트 생성"
+  template:
+    src: "cleanup-backups.sh.j2"
+    dest: "/opt/grafana-backups/cleanup-backups.sh"
+    owner: "grafana"
+    group: "grafana"
+    mode: "0755"
+  become: true
+  when: backup_enabled
+
+- name: "백업 정리 Cron 작업 추가"
+  cron:
+    name: "Grafana 백업 정리"
+    minute: "30"
+    hour: "3"
+    job: "/opt/grafana-backups/cleanup-backups.sh >> /var/log/grafana-cleanup.log 2>&1"
+    user: "grafana"
+  become: true
+  when: backup_enabled
+
+- name: "AWS S3 백업 설정 (선택사항)"
+  template:
+    src: "s3-backup-config.yml.j2"
+    dest: "/etc/grafana/provisioning/backups/s3-backup.yml"
+    owner: "grafana"
+    group: "grafana"
+    mode: "0644"
+  become: true
+  when: backup_enabled and backup_s3_bucket is defined
+
+- name: "백업 설정 완료"
+  debug:
+    msg: |
+      백업 및 유지보수 설정이 완료되었습니다:
+      - 백업 활성화: {{ '예' if backup_enabled else '아니오' }}
+      - 백업 스케줄: {{ backup_schedule }}
+      - 백업 보관 기간: {{ backup_retention }}일
+      - S3 백업: {{ '활성화됨' if backup_s3_bucket is defined else '비활성화됨' }}

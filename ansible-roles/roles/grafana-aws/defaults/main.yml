@@ -1,0 +1,40 @@
+---
+# Grafana AWS 배포 기본 설정
+# 프로덕션 환경에서는 반드시 Vault를 사용하여 민감한 정보를 암호화하세요
+
+# AWS 설정
+aws_region: "ap-northeast-2"
+instance_type: "t3.medium"
+vpc_id: "vpc-xxxxxxxxx"
+subnet_id: "subnet-xxxxxxxxx"
+key_name: "your-key-pair"
+security_group_name: "grafana-security-group"
+
+# Grafana 설정
+grafana_version: "9.5.0"
+grafana_port: 3000
+admin_user: "admin"
+admin_password: "ffa2cjb_kyq-TQD*kha"  
+grafana_domain: "grafana.raccoontech.work"
+
+# 인스턴스 설정
+instance_name: "grafana-monitoring"
+volume_size: 20
+volume_type: "gp3"
+delete_on_termination: true
+
+# 보안 그룹 규칙
+allowed_cidr_blocks:
+  - "10.0.0.0/8"
+  - "172.16.0.0/12"
+  - "192.168.0.0/16"
+
+# 모니터링 설정
+enable_cloudwatch: true
+enable_logging: true
+retention_days: 30
+
+# 백업 설정
+backup_enabled: true
+backup_schedule: "0 2 * * *"
+backup_retention: 7

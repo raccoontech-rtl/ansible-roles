@@ -1,0 +1,55 @@
+#!/bin/bash
+# Grafana 백업 정리 스크립트
+# 이 스크립트는 오래된 백업 파일을 정리합니다
+
+# 설정 변수
+BACKUP_DIR="/opt/grafana-backups"
+RETENTION_DAYS={{ backup_retention }}
+LOG_FILE="/var/log/grafana-cleanup.log"
+
+# 로그 함수
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+log_message "Grafana 백업 정리를 시작합니다..."
+
+# 백업 디렉토리 확인
+if [ ! -d "$BACKUP_DIR" ]; then
+    log_message "백업 디렉토리가 존재하지 않습니다: $BACKUP_DIR"
+    exit 1
+fi
+
+# 정리 전 백업 파일 수 확인
+BACKUP_COUNT_BEFORE=$(find "$BACKUP_DIR" -name "grafana_backup_*.tar.gz" | wc -l)
+DB_BACKUP_COUNT_BEFORE=$(find "$BACKUP_DIR" -name "grafana_db_backup_*.sql.gz" | wc -l)
+
+log_message "정리 전 백업 파일 수: Grafana($BACKUP_COUNT_BEFORE), DB($DB_BACKUP_COUNT_BEFORE)"
+
+# 오래된 Grafana 백업 파일 정리
+log_message "오래된 Grafana 백업 파일을 정리합니다..."
+find "$BACKUP_DIR" -name "grafana_backup_*.tar.gz" -mtime +$RETENTION_DAYS -exec rm -f {} \;
+
+# 오래된 데이터베이스 백업 파일 정리
+log_message "오래된 데이터베이스 백업 파일을 정리합니다..."
+find "$BACKUP_DIR" -name "grafana_db_backup_*.sql.gz" -mtime +$RETENTION_DAYS -exec rm -f {} \;
+
+# 정리 후 백업 파일 수 확인
+BACKUP_COUNT_AFTER=$(find "$BACKUP_DIR" -name "grafana_backup_*.tar.gz" | wc -l)
+DB_BACKUP_COUNT_AFTER=$(find "$BACKUP_DIR" -name "grafana_db_backup_*.sql.gz" | wc -l)
+
+# 정리된 파일 수 계산
+CLEANED_GRAFANA=$((BACKUP_COUNT_BEFORE - BACKUP_COUNT_AFTER))
+CLEANED_DB=$((DB_BACKUP_COUNT_BEFORE - DB_BACKUP_COUNT_AFTER))
+
+log_message "정리 완료:"
+log_message "  - Grafana 백업: $CLEANED_GRAFANA개 파일 정리됨"
+log_message "  - DB 백업: $CLEANED_DB개 파일 정리됨"
+log_message "  - 남은 Grafana 백업: $BACKUP_COUNT_AFTER개"
+log_message "  - 남은 DB 백업: $DB_BACKUP_COUNT_AFTER개"
+
+# 디스크 사용량 확인
+DISK_USAGE=$(du -sh "$BACKUP_DIR" | cut -f1)
+log_message "백업 디렉토리 디스크 사용량: $DISK_USAGE"
+
+log_message "Grafana 백업 정리가 완료되었습니다."

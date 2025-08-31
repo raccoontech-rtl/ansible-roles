@@ -1,0 +1,37 @@
+# Grafana LDAP 인증 설정
+# 이 파일은 기업 LDAP 서버와의 통합을 구성합니다
+
+[[servers]]
+# LDAP 서버 설정
+host = "{{ ldap_host }}"
+port = {{ ldap_port }}
+use_ssl = false
+start_tls = false
+ssl_skip_verify = false
+
+# LDAP 바인드 설정
+bind_dn = "{{ ldap_bind_dn }}"
+bind_password = "{{ ldap_bind_password }}" 
+
+# 사용자 검색 설정
+search_filter = "(sAMAccountName=%s)"
+search_base_dns = ["dc=company,dc=com"]
+
+# 그룹 검색 설정
+group_search_filter = "(&(objectClass=group)(member=%s))"
+group_search_base_dns = ["ou=groups,dc=company,dc=com"]
+group_search_filter_user_attribute = "distinguishedName"
+
+# 사용자 속성 매핑
+[servers.attributes]
+name = "givenName"
+surname = "sn"
+username = "sAMAccountName"
+member_of = "memberOf"
+email = "mail"
+
+# 그룹 속성 매핑
+[servers.group_mappings]
+admin_group = "cn=grafana-admins,ou=groups,dc=company,dc=com"
+viewer_group = "cn=grafana-users,ou=groups,dc=company,dc=com"
+editor_group = "cn=grafana-editors,ou=groups,dc=company,dc=com"

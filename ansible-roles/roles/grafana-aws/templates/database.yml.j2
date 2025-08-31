@@ -1,0 +1,46 @@
+# Grafana 데이터베이스 데이터소스 설정
+# 이 파일은 PostgreSQL 데이터베이스 연결을 구성합니다
+
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    url: {{ database_host }}:{{ database_port }}
+    database: {{ database_name }}
+    user: {{ database_user }}
+    secureJsonData:
+      password: "{{ database_password }}"  # 하드코딩된 데이터베이스 비밀번호
+    jsonData:
+      sslmode: "require"
+      maxOpenConns: 100
+      maxIdleConns: 100
+      connMaxLifetime: 14400
+      postgresVersion: 1200
+      timescaledb: false
+    editable: true
+    version: 1
+
+  - name: Prometheus
+    type: prometheus
+    url: http://localhost:9090
+    access: proxy
+    isDefault: false
+    editable: true
+    version: 1
+
+  - name: Node Exporter
+    type: prometheus
+    url: http://localhost:9100
+    access: proxy
+    isDefault: false
+    editable: true
+    version: 1
+
+  - name: AWS CloudWatch
+    type: cloudwatch
+    jsonData:
+      authType: default
+      defaultRegion: {{ aws_region }}
+    editable: true
+    version: 1

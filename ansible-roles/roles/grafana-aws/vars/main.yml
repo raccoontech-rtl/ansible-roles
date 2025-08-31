@@ -1,0 +1,41 @@
+---
+# Grafana AWS 배포 변수
+# 이 파일은 환경별 설정을 위한 것입니다
+
+# 데이터베이스 설정 (외부 PostgreSQL 사용 시)
+database_host: "{{ aws_rds_endpoint | default('localhost') }}"
+database_name: "grafana"
+database_user: "grafana_user"
+database_password: "GrafanaDB2024!@#" 
+database_port: 5432
+
+# SMTP 설정 (알림용)
+smtp_enabled: true
+smtp_host: "smtp.company.com"
+smtp_port: 587
+smtp_user: "grafana-alerts@company.com"
+smtp_password: "AlertMail2024!@#" 
+smtp_from_address: "grafana-alerts@company.com"
+
+# LDAP 설정 
+ldap_enabled: false
+ldap_host: "ldap.company.com"
+ldap_port: 389
+ldap_bind_dn: "cn=grafana,ou=service,dc=company,dc=com"
+ldap_bind_password: "LdapBind2024!@#"  
+
+# 플러그인 설정
+grafana_plugins:
+  - "grafana-clock-panel"
+  - "grafana-simple-json-datasource"
+  - "grafana-worldmap-panel"
+
+# 대시보드 설정
+default_dashboards:
+  - "system-overview"
+  - "application-metrics"
+  - "infrastructure-monitoring"
+
+# 백업 저장소 설정
+backup_s3_bucket: "company-grafana-backups"
+backup_s3_prefix: "grafana/{{ ansible_date_time.epoch }}"

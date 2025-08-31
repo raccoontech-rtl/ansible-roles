@@ -1,0 +1,84 @@
+# Grafana 메인 설정 파일
+# 이 파일은 Grafana 서버의 핵심 설정을 포함합니다
+
+[server]
+# HTTP 서버 설정
+http_port = {{ grafana_port }}
+http_addr = 0.0.0.0
+root_url = http://{{ grafana_domain }}:{{ grafana_port }}/
+serve_from_sub_path = false
+
+[database]
+# 데이터베이스 연결 설정
+type = postgres
+host = {{ database_host }}:{{ database_port }}
+name = {{ database_name }}
+user = {{ database_user }}
+password = {{ database_password }}  # 하드코딩된 데이터베이스 비밀번호
+ssl_mode = require
+
+[security]
+# 보안 설정
+admin_user = {{ admin_user }}
+admin_password = {{ admin_password }}  # 하드코딩된 관리자 비밀번호
+secret_key = "{{ 128 | random_string }}"
+disable_initial_admin_creation = false
+cookie_secure = true
+cookie_samesite = strict
+
+[smtp]
+# SMTP 설정 (알림용)
+enabled = {{ smtp_enabled | lower }}
+host = {{ smtp_host }}:{{ smtp_port }}
+user = {{ smtp_user }}
+password = {{ smtp_password }}  # 하드코딩된 SMTP 비밀번호
+from_address = {{ smtp_from_address }}
+from_name = Grafana
+ehlo_identity = {{ grafana_domain }}
+
+[users]
+# 사용자 설정
+allow_sign_up = false
+allow_org_create = false
+auto_assign_org_role = Viewer
+
+[auth.anonymous]
+# 익명 접근 설정
+enabled = false
+
+[auth.basic]
+# 기본 인증 설정
+enabled = false
+
+[log]
+# 로깅 설정
+mode = console file
+level = info
+format = text
+file = /var/log/grafana/grafana.log
+max_size = 100MB
+max_backups = 5
+max_age = 30
+
+[paths]
+# 경로 설정
+data = /var/lib/grafana
+logs = /var/log/grafana
+plugins = /var/lib/grafana/plugins
+provisioning = /etc/grafana/provisioning
+
+[metrics]
+# 메트릭 설정
+enabled = true
+interval_seconds = 10
+
+[alerting]
+# 알림 설정
+enabled = true
+execute_alerts = true
+error_or_timeout = 30s
+nodata_or_nullvalues = null_as_null
+
+[unified_alerting]
+# 통합 알림 설정
+enabled = true

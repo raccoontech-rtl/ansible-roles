@@ -1,0 +1,36 @@
+---
+# Grafana AWS 배포 핸들러
+# 이 파일은 서비스 재시작과 같은 이벤트를 처리합니다
+
+- name: "Grafana 재시작"
+  systemd:
+    name: grafana-server
+    state: restarted
+    daemon_reload: yes
+  become: true
+
+- name: "Prometheus 재시작"
+  systemd:
+    name: prometheus
+    state: restarted
+    daemon_reload: yes
+  become: true
+
+- name: "CloudWatch Agent 재시작"
+  systemd:
+    name: amazon-cloudwatch-agent
+    state: restarted
+    daemon_reload: yes
+  become: true
+
+- name: "모든 모니터링 서비스 재시작"
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: yes
+  become: true
+  loop:
+    - grafana-server
+    - prometheus
+    - prometheus-node-exporter
+    - amazon-cloudwatch-agent

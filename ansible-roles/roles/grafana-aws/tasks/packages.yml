@@ -1,0 +1,78 @@
+---
+# 필수 패키지 설치 태스크
+# 이 파일은 시스템에 필요한 기본 패키지들을 설치합니다
+
+- name: "APT 패키지 캐시 업데이트"
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: "필수 시스템 패키지 설치"
+  apt:
+    name:
+      - curl
+      - wget
+      - unzip
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-setuptools
+      - python3-wheel
+      - build-essential
+      - git
+      - htop
+      - vim
+      - tree
+      - jq
+      - awscli
+    state: present
+  become: true
+
+- name: "Python pip 업그레이드"
+  pip:
+    name: pip
+    state: latest
+  become: true
+
+- name: "Python 패키지 설치"
+  pip:
+    name:
+      - boto3
+      - botocore
+      - requests
+      - psycopg2-binary
+    state: present
+  become: true
+
+- name: "Docker 설치 (선택사항)"
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+  become: true
+  when: docker_enabled | default(false)
+
+- name: "Docker 서비스 시작 및 활성화"
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+  become: true
+  when: docker_enabled | default(false)
+
+- name: "Docker 그룹에 사용자 추가"
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+  become: true
+  when: docker_enabled | default(false)
+
+- name: "패키지 설치 완료"
+  debug:
+    msg: "모든 필수 패키지가 성공적으로 설치되었습니다."

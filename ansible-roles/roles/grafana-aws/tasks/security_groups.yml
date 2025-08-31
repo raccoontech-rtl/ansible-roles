@@ -1,0 +1,65 @@
+---
+# AWS 보안 그룹 생성 태스크
+# 이 파일은 Grafana 서버를 위한 보안 그룹을 생성합니다
+
+- name: "보안 그룹 정보 수집"
+  ec2_group_info:
+    region: "{{ aws_region }}"
+    name: "{{ security_group_name }}"
+  register: existing_security_group
+
+- name: "보안 그룹 생성"
+  ec2_group:
+    region: "{{ aws_region }}"
+    name: "{{ security_group_name }}"
+    description: "Grafana 모니터링 서버를 위한 보안 그룹"
+    vpc_id: "{{ vpc_id }}"
+    rules:
+      # SSH 접근 (22번 포트)
+      - proto: tcp
+        ports:
+          - 22
+        cidr_ip: "{{ item }}"
+      # Grafana 웹 인터페이스 (3000번 포트)
+      - proto: tcp
+        ports:
+          - "{{ grafana_port }}"
+        cidr_ip: "{{ item }}"
+      # Prometheus 메트릭 수집 (9090번 포트)
+      - proto: tcp
+        ports:
+          - 9090
+        cidr_ip: "{{ item }}"
+      # Node Exporter 메트릭 (9100번 포트)
+      - proto: tcp
+        ports:
+          - 9100
+        cidr_ip: "{{ item }}"
+      # ICMP (ping)
+      - proto: icmp
+        from_port: -1
+        to_port: -1
+        cidr_ip: "{{ item }}"
+    rules_egress:
+      # 모든 아웃바운드 트래픽 허용
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+    tags:
+      Name: "{{ security_group_name }}"
+      Environment: "production"
+      Project: "monitoring"
+      Owner: "devops-team"
+  loop: "{{ allowed_cidr_blocks }}"
+  when: existing_security_group.security_groups | length == 0
+
+- name: "보안 그룹 ID 저장"
+  set_fact:
+    security_group_id: "{{ existing_security_group.security_groups[0].group_id | default(existing_security_group.security_groups[0].group_id) }}"
+
+- name: "보안 그룹 생성 완료"
+  debug:
+    msg: |
+      보안 그룹이 성공적으로 생성되었습니다:
+      보안 그룹 이름: {{ security_group_name }}
+      보안 그룹 ID: {{ security_group_id }}
+      허용된 CIDR 블록: {{ allowed_cidr_blocks }}

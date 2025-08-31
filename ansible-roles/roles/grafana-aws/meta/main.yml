@@ -1,0 +1,32 @@
+---
+# Grafana AWS 배포 Ansible Role 메타데이터
+# 이 파일은 Role의 기본 정보와 의존성을 정의합니다
+
+galaxy_info:
+  author: "DevOps Team"
+  company: "Company Name"
+  description: "AWS 환경에서 Grafana 모니터링 서버를 자동으로 배포하고 구성하는 Ansible Role"
+  min_ansible_version: "2.9"
+  license: "MIT"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "20.04"
+        - "22.04"
+    - name: Amazon
+      versions:
+        - "2023"
+  galaxy_tags:
+    - monitoring
+    - grafana
+    - aws
+    - devops
+    - infrastructure
+    - automation
+    - korean
+
+dependencies:
+  - role: "common"
+    version: ">=1.0.0"
+  - role: "aws-setup"
+    version: ">=1.0.0"

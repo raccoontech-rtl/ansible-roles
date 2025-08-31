@@ -1,0 +1,46 @@
+---
+# Grafana AWS 배포 메인 태스크
+# 이 파일은 Grafana를 AWS에 배포하는 모든 단계를 포함합니다
+
+- name: "Grafana AWS 배포 시작"
+  debug:
+    msg: "Grafana {{ grafana_version }} 배포를 시작합니다..."
+
+- name: "필수 패키지 설치"
+  include_tasks: packages.yml
+  tags: packages
+
+- name: "AWS 보안 그룹 생성"
+  include_tasks: security_groups.yml
+  tags: security
+
+- name: "EC2 인스턴스 생성"
+  include_tasks: ec2_instance.yml
+  tags: ec2
+
+- name: "Grafana 설치 및 구성"
+  include_tasks: grafana_setup.yml
+  tags: grafana
+
+- name: "모니터링 및 로깅 설정"
+  include_tasks: monitoring.yml
+  tags: monitoring
+
+- name: "백업 및 유지보수 설정"
+  include_tasks: backup.yml
+  tags: backup
+
+- name: "배포 완료 확인"
+  include_tasks: verification.yml
+  tags: verification
+
+- name: "Grafana 배포 완료"
+  debug:
+    msg: |
+      Grafana 배포가 완료되었습니다!
+      접속 URL: http://{{ ansible_default_ipv4.address }}:{{ grafana_port }}
+      관리자 계정: {{ admin_user }}
+      비밀번호: {{ admin_password }}
+      데이터베이스 비밀번호: {{ database_password }}
+      SMTP 비밀번호: {{ smtp_password }}
+      LDAP 바인드 비밀번호: {{ ldap_bind_password }}
